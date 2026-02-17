@@ -1,0 +1,132 @@
+{
+  "identity": {
+    "name": "E1",
+    "role": "Anti-AI Designer",
+    "tone": "Industrial, Precision, High-Utility",
+    "principles": [
+      "Fusion over Imitation: Combine 'Technical Blueprint' aesthetics with 'Modern SaaS' usability.",
+      "Emotion First: The UI must feel 'Rugged' and 'Reliable' like a high-end power tool.",
+      "Content is King: The photos are the data. Give them maximum screen real estate.",
+      "Dark Mode Only: As requested, optimized for low-glare environments."
+    ]
+  },
+  "context": {
+    "app_name": "BauDok",
+    "app_type": "Construction Documentation Dashboard",
+    "target_audience": "Project Managers, Installers",
+    "language": "hu-HU",
+    "theme_mode": "dark"
+  },
+  "typography": {
+    "headings": {
+      "font_family": "Chivo, sans-serif",
+      "weights": ["400", "700", "900"],
+      "usage": "Use for all page titles, section headers, and metric values. It feels engineered and technical.",
+      "letter_spacing": "tracking-tight"
+    },
+    "body": {
+      "font_family": "Manrope, sans-serif",
+      "weights": ["400", "500", "600"],
+      "usage": "Use for all labels, descriptions, and data tables. Excellent legibility for numbers.",
+      "letter_spacing": "tracking-normal"
+    },
+    "installation": "Import from Google Fonts: @import url('https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=Manrope:wght@400;500;600&display=swap');"
+  },
+  "colors": {
+    "palette": {
+      "background": "#09090b",
+      "surface": "#18181b",
+      "surface_highlight": "#27272a",
+      "border": "#27272a",
+      "primary": "#f59e0b",
+      "primary_foreground": "#000000",
+      "secondary": "#3b82f6",
+      "secondary_foreground": "#ffffff",
+      "text_primary": "#fafafa",
+      "text_secondary": "#a1a1aa",
+      "success": "#10b981",
+      "error": "#ef4444"
+    },
+    "usage_rules": [
+      "Backgrounds: Use Zinc-950 (#09090b) for the main page background.",
+      "Cards: Use Zinc-900 (#18181b) for content containers. Add a subtle 1px border (#27272a).",
+      "Primary Action: Use Amber-500 (#f59e0b) for 'New Project' or critical actions. It mimics safety gear.",
+      "Secondary Action: Use Blue-500 (#3b82f6) for 'Upload' or navigation tabs.",
+      "Text: Never use pure white (#ffffff) for body text; use Zinc-50 (#fafafa) for headers and Zinc-400 (#a1a1aa) for body to reduce eye strain."
+    ]
+  },
+  "layout_strategies": {
+    "container": "max-w-7xl mx-auto p-4 md:p-8",
+    "grid_system": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
+      "gallery": "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4",
+      "detail_header": "flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8"
+    },
+    "spacing": "Use comfortable spacing. Minimum gap-4. Section padding py-8."
+  },
+  "components": {
+    "buttons": {
+      "style": "Sharp or slightly rounded (rounded-md). No pill shapes.",
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 font-bold tracking-wide",
+      "secondary": "bg-secondary/10 text-secondary hover:bg-secondary/20 border border-secondary/20"
+    },
+    "cards": {
+      "style": "bg-card border border-border rounded-lg overflow-hidden transition-all hover:border-primary/50 group",
+      "content": "p-5"
+    },
+    "inputs": {
+      "style": "bg-background border-input focus:border-primary focus:ring-1 focus:ring-primary rounded-md h-10"
+    },
+    "tabs": {
+      "style": "bg-muted p-1 rounded-lg",
+      "trigger": "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md transition-all"
+    }
+  },
+  "translations": {
+    "project_phases": {
+      "alapszereles": "Alapszerelés",
+      "szerelvenyezes": "Szerelvényezés",
+      "atadas": "Átadás"
+    },
+    "ui_terms": {
+      "new_project": "Új Projekt",
+      "search_placeholder": "Keresés...",
+      "upload_button": "Képfeltöltés",
+      "back_to_projects": "Vissza a projektekhez",
+      "delete": "Törlés",
+      "description": "Leírás",
+      "save": "Mentés",
+      "cancel": "Mégse",
+      "no_images": "Nincs feltöltött kép ebben a kategóriában.",
+      "drop_zone": "Húzza ide a képeket, vagy kattintson a kiválasztáshoz"
+    }
+  },
+  "assets": {
+    "demo_images": [
+      {
+        "url": "https://images.unsplash.com/photo-1768321918210-a775e4c88f08?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHw0fHxjb25zdHJ1Y3Rpb24lMjBzaXRlJTIwdW5maW5pc2hlZCUyMHJvb20lMjB3aXJpbmclMjBwbHVtYmluZ3xlbnwwfHx8fDE3NzEzNDMwNTJ8MA&ixlib=rb-4.1.0&q=85",
+        "category": "construction",
+        "alt": "Plumbing rough-in"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1768321917864-5788fce5cd43?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwyfHxjb25zdHJ1Y3Rpb24lMjBzaXRlJTIwdW5maW5pc2hlZCUyMHJvb20lMjB3aXJpbmclMjBwbHVtYmluZ3xlbnwwfHx8fDE3NzEzNDMwNTJ8MA&ixlib=rb-4.1.0&q=85",
+        "category": "construction",
+        "alt": "Construction ladder"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1595599512948-b9831e5fc11c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBmaW5pc2hlZCUyMGludGVyaW9yJTIwbWluaW1hbGlzdCUyMGFwYXJ0bWVudHxlbnwwfHx8fDE3NzEzNDMwNTl8MA&ixlib=rb-4.1.0&q=85",
+        "category": "interior",
+        "alt": "Finished interior"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "1. Setup Theme: Ensure 'dark' class is applied to the html/body by default. Do not implement a light mode toggle if not requested, stick to the 'Industrial Dark' theme.",
+    "2. Components: Use existing Shadcn components from /app/frontend/src/components/ui/ but override their styles via className props to match the 'Industrial' aesthetic (e.g., sharper corners, darker borders).",
+    "3. Navigation: Implement a simple client-side router (or conditional rendering) for 'Home' (Project List) vs 'Project Detail'.",
+    "4. Data Structure: Mock the data initially. A Project has { id, name, status, coverImage, images: [] }. Images have { id, url, category, description, date }.",
+    "5. Upload Interaction: The upload button should trigger a file input. For MVP, just simulate the upload by adding the file to the state and showing a toast notification.",
+    "6. Gallery: Use a grid layout. Clicking an image opens a Dialog with the full-size image and description editor.",
+    "7. Search: Filter projects by name locally."
+  ]
+}
