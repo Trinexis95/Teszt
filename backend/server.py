@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,10 +7,10 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
-
+import base64
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,52 +20,233 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
+# Create the main app
 app = FastAPI()
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# --- Models ---
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
+class ImageModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    category: str  # alapszereles, szerelvenyezes, atadas
+    description: str = ""
+    filename: str = ""
+    content_type: str = "image/jpeg"
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class ProjectModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    image_count: int = 0
 
-# Add your routes to the router instead of directly to app
+class ProjectCreate(BaseModel):
+    name: str
+    description: str = ""
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class ImageUpdate(BaseModel):
+    description: str
+
+class ImageResponse(BaseModel):
+    id: str
+    category: str
+    description: str
+    filename: str
+    content_type: str
+    created_at: str
+
+class ProjectWithImages(BaseModel):
+    id: str
+    name: str
+    description: str
+    created_at: str
+    updated_at: str
+    image_count: int
+    images: List[ImageResponse]
+
+# --- Project Endpoints ---
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "BauDok API"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+@api_router.post("/projects", response_model=ProjectModel)
+async def create_project(project: ProjectCreate):
+    project_obj = ProjectModel(
+        name=project.name,
+        description=project.description
+    )
+    doc = project_obj.model_dump()
+    await db.projects.insert_one(doc)
+    return project_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+@api_router.get("/projects", response_model=List[ProjectModel])
+async def get_projects(search: Optional[str] = None):
+    query = {}
+    if search:
+        query["name"] = {"$regex": search, "$options": "i"}
+    projects = await db.projects.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return projects
+
+@api_router.get("/projects/{project_id}", response_model=ProjectWithImages)
+async def get_project(project_id: str):
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Projekt nem található")
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    # Get images for this project (excluding binary data)
+    images = await db.images.find(
+        {"project_id": project_id},
+        {"_id": 0, "data": 0}
+    ).sort("created_at", -1).to_list(1000)
     
-    return status_checks
+    return {**project, "images": images}
+
+@api_router.put("/projects/{project_id}", response_model=ProjectModel)
+async def update_project(project_id: str, update: ProjectUpdate):
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Projekt nem található")
+    
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.projects.update_one({"id": project_id}, {"$set": update_data})
+    updated = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/projects/{project_id}")
+async def delete_project(project_id: str):
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Projekt nem található")
+    
+    # Delete all images for this project
+    await db.images.delete_many({"project_id": project_id})
+    await db.projects.delete_one({"id": project_id})
+    
+    return {"message": "Projekt törölve"}
+
+# --- Image Endpoints ---
+
+@api_router.post("/projects/{project_id}/images")
+async def upload_image(
+    project_id: str,
+    file: UploadFile = File(...),
+    category: str = Form(...),
+    description: str = Form("")
+):
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Projekt nem található")
+    
+    if category not in ["alapszereles", "szerelvenyezes", "atadas"]:
+        raise HTTPException(status_code=400, detail="Érvénytelen kategória")
+    
+    # Read file content
+    content = await file.read()
+    
+    image_id = str(uuid.uuid4())
+    image_doc = {
+        "id": image_id,
+        "project_id": project_id,
+        "category": category,
+        "description": description,
+        "filename": file.filename,
+        "content_type": file.content_type or "image/jpeg",
+        "data": base64.b64encode(content).decode('utf-8'),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.images.insert_one(image_doc)
+    
+    # Update project image count
+    count = await db.images.count_documents({"project_id": project_id})
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"image_count": count, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {
+        "id": image_id,
+        "category": category,
+        "description": description,
+        "filename": file.filename,
+        "content_type": image_doc["content_type"],
+        "created_at": image_doc["created_at"]
+    }
+
+@api_router.get("/projects/{project_id}/images")
+async def get_project_images(
+    project_id: str,
+    category: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None
+):
+    query = {"project_id": project_id}
+    
+    if category:
+        query["category"] = category
+    
+    if date_from or date_to:
+        query["created_at"] = {}
+        if date_from:
+            query["created_at"]["$gte"] = date_from
+        if date_to:
+            query["created_at"]["$lte"] = date_to + "T23:59:59"
+    
+    images = await db.images.find(query, {"_id": 0, "data": 0}).sort("created_at", -1).to_list(1000)
+    return images
+
+@api_router.get("/images/{image_id}/data")
+async def get_image_data(image_id: str):
+    image = await db.images.find_one({"id": image_id})
+    if not image:
+        raise HTTPException(status_code=404, detail="Kép nem található")
+    
+    data = base64.b64decode(image["data"])
+    return Response(content=data, media_type=image.get("content_type", "image/jpeg"))
+
+@api_router.put("/images/{image_id}")
+async def update_image(image_id: str, update: ImageUpdate):
+    image = await db.images.find_one({"id": image_id})
+    if not image:
+        raise HTTPException(status_code=404, detail="Kép nem található")
+    
+    await db.images.update_one(
+        {"id": image_id},
+        {"$set": {"description": update.description}}
+    )
+    
+    return {"message": "Leírás frissítve"}
+
+@api_router.delete("/images/{image_id}")
+async def delete_image(image_id: str):
+    image = await db.images.find_one({"id": image_id})
+    if not image:
+        raise HTTPException(status_code=404, detail="Kép nem található")
+    
+    project_id = image["project_id"]
+    await db.images.delete_one({"id": image_id})
+    
+    # Update project image count
+    count = await db.images.count_documents({"project_id": project_id})
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"image_count": count, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Kép törölve"}
 
 # Include the router in the main app
 app.include_router(api_router)

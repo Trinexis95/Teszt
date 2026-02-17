@@ -1,34 +1,124 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* BauDok App Styles */
+
+.app-container {
+    min-height: 100vh;
+    background-color: hsl(240 6% 4%);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
+/* Header styles */
+.app-header {
+    background-color: hsl(240 5% 9%);
+    border-bottom: 1px solid hsl(240 4% 16%);
+}
+
+/* Project card hover animation */
+.project-card {
+    transition: all 0.2s ease-in-out;
+}
+
+.project-card:hover {
+    border-color: hsl(38 92% 50% / 0.5);
+    box-shadow: 0 4px 20px hsl(38 92% 50% / 0.1);
+}
+
+/* Gallery grid */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .gallery-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
+@media (min-width: 1024px) {
+    .gallery-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Image thumbnail */
+.image-thumbnail {
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 0.5rem;
+}
+
+/* Lightbox image */
+.lightbox-image {
+    max-height: 70vh;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+/* Upload button animation */
+.upload-btn {
+    transition: all 0.2s ease;
+}
+
+.upload-btn:hover {
+    transform: scale(1.02);
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Stagger animation for gallery items */
+.gallery-item {
+    opacity: 0;
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+.gallery-item:nth-child(1) { animation-delay: 0.05s; }
+.gallery-item:nth-child(2) { animation-delay: 0.1s; }
+.gallery-item:nth-child(3) { animation-delay: 0.15s; }
+.gallery-item:nth-child(4) { animation-delay: 0.2s; }
+.gallery-item:nth-child(5) { animation-delay: 0.25s; }
+.gallery-item:nth-child(6) { animation-delay: 0.3s; }
+.gallery-item:nth-child(7) { animation-delay: 0.35s; }
+.gallery-item:nth-child(8) { animation-delay: 0.4s; }
+
+/* Empty state */
+.empty-state {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+    padding: 4rem 2rem;
+    text-align: center;
 }
 
-.App-link {
-    color: #61dafb;
+/* Badge variants */
+.badge-alapszereles {
+    background-color: hsl(38 92% 50% / 0.15);
+    color: hsl(38 92% 50%);
+    border: 1px solid hsl(38 92% 50% / 0.3);
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.badge-szerelvenyezes {
+    background-color: hsl(217 91% 60% / 0.15);
+    color: hsl(217 91% 60%);
+    border: 1px solid hsl(217 91% 60% / 0.3);
+}
+
+.badge-atadas {
+    background-color: hsl(160 84% 39% / 0.15);
+    color: hsl(160 84% 39%);
+    border: 1px solid hsl(160 84% 39% / 0.3);
 }
