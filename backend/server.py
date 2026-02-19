@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
@@ -15,7 +15,6 @@ import base64
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
@@ -28,8 +27,6 @@ PREDEFINED_TAGS = [
     "szigetelés", "gipszkarton", "hiba", "javítás",
     "ablak", "ajtó", "fűtés", "klíma", "szaniter"
 ]
-
-# --- Pydantic Models ---
 
 class ProjectCreate(BaseModel):
     name: str
@@ -48,15 +45,11 @@ class ImageUpdate(BaseModel):
     floorplan_x: Optional[float] = None
     floorplan_y: Optional[float] = None
 
-# --- Helper Functions ---
-
 def create_id():
     return str(uuid.uuid4())
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
-
-# --- Root ---
 
 @api_router.get("/")
 async def root():
@@ -65,8 +58,6 @@ async def root():
 @api_router.get("/tags")
 async def get_tags():
     return {"tags": PREDEFINED_TAGS}
-
-# --- Projects ---
 
 @api_router.post("/projects")
 async def create_project(data: ProjectCreate):
@@ -79,7 +70,7 @@ async def create_project(data: ProjectCreate):
         "image_count": 0
     }
     await db.projects.insert_one(project)
-    del project["_id"]
+    project.pop("_id", None)
     return project
 
 @api_router.get("/projects")
@@ -127,8 +118,6 @@ async def delete_project(project_id: str):
     await db.floorplans.delete_many({"project_id": project_id})
     await db.projects.delete_one({"id": project_id})
     return {"message": "Projekt törölve"}
-
-# --- Floorplans ---
 
 @api_router.post("/projects/{project_id}/floorplans")
 async def upload_floorplan(
@@ -195,8 +184,6 @@ async def delete_floorplan(floorplan_id: str):
     await db.floorplans.delete_one({"id": floorplan_id})
     return {"message": "Tervrajz törölve"}
 
-# --- Images ---
-
 @api_router.post("/projects/{project_id}/images")
 async def upload_image(
     project_id: str,
@@ -243,8 +230,8 @@ async def upload_image(
     count = await db.images.count_documents({"project_id": project_id})
     await db.projects.update_one({"id": project_id}, {"$set": {"image_count": count, "updated_at": now_iso()}})
     
-    del image["data"]
-    del image["_id"]
+    image.pop("data", None)
+    image.pop("_id", None)
     return image
 
 @api_router.get("/projects/{project_id}/images")
@@ -309,8 +296,6 @@ async def delete_image(image_id: str):
     count = await db.images.count_documents({"project_id": project_id})
     await db.projects.update_one({"id": project_id}, {"$set": {"image_count": count, "updated_at": now_iso()}})
     return {"message": "Kép törölve"}
-
-# --- App Setup ---
 
 app.include_router(api_router)
 
