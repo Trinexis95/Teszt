@@ -1,43 +1,75 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./App.css";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
-import { 
-  FolderPlus, Search, ArrowLeft, Upload, Trash2, Edit3, 
-  Calendar, Image as ImageIcon, FolderOpen,
-  ChevronRight, Clock, Camera, MapPin, Tag, Link2, X,
-  Columns, Map, Plus, FileImage
-} from "lucide-react";
-
-import { Button } from "./components/ui/button";
-import { Input } from "./components/ui/input";
-import { Textarea } from "./components/ui/textarea";
-import { Card, CardContent } from "./components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "./components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import { Calendar as CalendarComponent } from "./components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "./components/ui/popover";
-import { Label } from "./components/ui/label";
-import { Badge } from "./components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./components/ui/alert-dialog";
 
 const API = (process.env.REACT_APP_BACKEND_URL || "") + "/api";
 
 const CATEGORIES = {
-  alapszereles: { label: "Alapszerelés" },
-  szerelvenyezes: { label: "Szerelvényezés" },
-  atadas: { label: "Átadás" }
+  alapszereles: "Alapszerelés",
+  szerelvenyezes: "Szerelvényezés",
+  atadas: "Átadás"
 };
 
-const PREDEFINED_TAGS = [
-  "villanyszerelés", "csövezés", "burkolás", "festés", 
+const TAGS = [
+  "villanyszerelés", "csövezés", "burkolás", "festés",
   "szigetelés", "gipszkarton", "hiba", "javítás",
   "ablak", "ajtó", "fűtés", "klíma", "szaniter"
 ];
 
-const formatDate = (d) => new Date(d).toLocaleDateString("hu-HU", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
-const formatShortDate = (d) => new Date(d).toLocaleDateString("hu-HU", { year: "numeric", month: "short", day: "numeric" });
+const formatDate = (d) => new Date(d).toLocaleDateString("hu-HU", {
+  year: "numeric", month: "short", day: "numeric"
+});
+
+// Icon components
+const Icons = {
+  FolderPlus: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>,
+  Search: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
+  ArrowLeft: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>,
+  Upload: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>,
+  Trash: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+  Camera: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
+  Clock: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  ChevronRight: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>,
+  Map: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>,
+  Plus: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>,
+  X: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+  MapPin: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
+  Link: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>,
+  Image: () => <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+  Folder: () => <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" /></svg>,
+  File: () => <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>,
+};
+
+// Modal component
+function Modal({ open, onClose, title, children, footer }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-zinc-900 rounded-lg border border-zinc-800 w-full max-w-lg max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+          <h2 className="text-lg font-bold">{title}</h2>
+          <button onClick={onClose} className="text-zinc-400 hover:text-white"><Icons.X /></button>
+        </div>
+        <div className="p-4">{children}</div>
+        {footer && <div className="p-4 border-t border-zinc-800 flex justify-end gap-2">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+// Button component
+function Button({ children, onClick, variant = "primary", disabled, className = "" }) {
+  const base = "px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50";
+  const variants = {
+    primary: "bg-amber-500 text-black hover:bg-amber-400",
+    secondary: "bg-blue-600 text-white hover:bg-blue-500",
+    outline: "border border-zinc-700 text-white hover:bg-zinc-800",
+    danger: "bg-red-600 text-white hover:bg-red-500",
+    ghost: "text-zinc-400 hover:text-white hover:bg-zinc-800"
+  };
+  return <button onClick={onClick} disabled={disabled} className={`${base} ${variants[variant]} ${className}`}>{children}</button>;
+}
 
 // Projects List
 function ProjectsList({ onSelect }) {
@@ -49,25 +81,37 @@ function ProjectsList({ onSelect }) {
   const [loading, setLoading] = useState(true);
   const [toDelete, setToDelete] = useState(null);
 
-  const fetch = useCallback(async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await axios.get(`${API}/projects`, { params: search ? { search } : {} });
       setProjects(data);
-    } catch { toast.error("Hiba a betöltéskor"); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error(err);
+      toast.error("Hiba a betöltéskor");
+    } finally {
+      setLoading(false);
+    }
   }, [search]);
 
-  useEffect(() => { const t = setTimeout(fetch, 300); return () => clearTimeout(t); }, [fetch]);
+  useEffect(() => {
+    const t = setTimeout(fetchProjects, 300);
+    return () => clearTimeout(t);
+  }, [fetchProjects]);
 
   const handleCreate = async () => {
     if (!newName.trim()) { toast.error("Add meg a nevet"); return; }
     try {
       await axios.post(`${API}/projects`, { name: newName, description: newDesc });
       toast.success("Létrehozva");
-      setShowNew(false); setNewName(""); setNewDesc("");
-      fetch();
-    } catch { toast.error("Hiba"); }
+      setShowNew(false);
+      setNewName("");
+      setNewDesc("");
+      fetchProjects();
+    } catch (err) {
+      console.error(err);
+      toast.error("Hiba");
+    }
   };
 
   const handleDelete = async () => {
@@ -76,85 +120,103 @@ function ProjectsList({ onSelect }) {
       await axios.delete(`${API}/projects/${toDelete.id}`);
       toast.success("Törölve");
       setToDelete(null);
-      fetch();
-    } catch { toast.error("Hiba"); }
+      fetchProjects();
+    } catch (err) {
+      console.error(err);
+      toast.error("Hiba");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="app-header sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <header className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800">
+        <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-black text-foreground">BauDok</h1>
-              <p className="text-muted-foreground text-sm mt-1">Építési projekt dokumentáció</p>
+              <h1 className="text-3xl font-black">BauDok</h1>
+              <p className="text-zinc-400 text-sm">Építési projekt dokumentáció</p>
             </div>
-            <Button onClick={() => setShowNew(true)} className="bg-primary text-primary-foreground" data-testid="new-project-btn">
-              <FolderPlus className="w-4 h-4 mr-2" />Új Projekt
-            </Button>
+            <Button onClick={() => setShowNew(true)}><Icons.FolderPlus />Új Projekt</Button>
           </div>
-          <div className="mt-6 relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Keresés..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-background" data-testid="search-input" />
+          <div className="mt-4 relative max-w-md">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"><Icons.Search /></div>
+            <input
+              type="text"
+              placeholder="Keresés..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:border-amber-500"
+            />
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8">
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1,2,3].map(i => <Card key={i} className="bg-card animate-pulse"><CardContent className="p-6"><div className="h-6 bg-muted rounded w-3/4 mb-4"/><div className="h-4 bg-muted rounded w-1/2"/></CardContent></Card>)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-zinc-900 rounded-lg p-6 animate-pulse">
+                <div className="h-6 bg-zinc-800 rounded w-3/4 mb-4" />
+                <div className="h-4 bg-zinc-800 rounded w-1/2" />
+              </div>
+            ))}
           </div>
         ) : projects.length === 0 ? (
           <div className="text-center py-16">
-            <FolderOpen className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <div className="text-zinc-600 mb-4"><Icons.Folder /></div>
             <h2 className="text-xl font-bold mb-2">{search ? "Nincs találat" : "Még nincs projekt"}</h2>
-            <p className="text-muted-foreground mb-6">{search ? "Próbálj mást" : "Hozd létre az elsőt"}</p>
-            {!search && <Button onClick={() => setShowNew(true)} className="bg-primary text-primary-foreground"><FolderPlus className="w-4 h-4 mr-2"/>Új Projekt</Button>}
+            <p className="text-zinc-400 mb-6">{search ? "Próbálj mást" : "Hozd létre az elsőt"}</p>
+            {!search && <Button onClick={() => setShowNew(true)}><Icons.FolderPlus />Új Projekt</Button>}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((p) => (
-              <Card key={p.id} className="bg-card cursor-pointer group hover:border-primary/50 transition-all" onClick={() => onSelect(p)} data-testid={`project-card-${p.id}`}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-bold truncate group-hover:text-primary transition-colors">{p.name}</h3>
-                      {p.description && <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{p.description}</p>}
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary ml-2" />
-                  </div>
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                    <span className="flex items-center gap-2 text-muted-foreground text-sm"><Camera className="w-4 h-4"/>{p.image_count || 0} kép</span>
-                    <span className="flex items-center gap-2 text-muted-foreground text-sm"><Clock className="w-4 h-4"/>{formatShortDate(p.created_at)}</span>
-                  </div>
-                  <Button variant="ghost" size="sm" className="mt-3 text-destructive hover:bg-destructive/10 w-full" onClick={(e) => { e.stopPropagation(); setToDelete(p); }}>
-                    <Trash2 className="w-4 h-4 mr-2"/>Törlés
-                  </Button>
-                </CardContent>
-              </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {projects.map(p => (
+              <div
+                key={p.id}
+                onClick={() => onSelect(p)}
+                className="bg-zinc-900 rounded-lg p-6 border border-zinc-800 cursor-pointer hover:border-amber-500/50 transition-colors"
+              >
+                <div className="flex justify-between items-start">
+                  <h3 className="text-lg font-bold truncate flex-1">{p.name}</h3>
+                  <Icons.ChevronRight />
+                </div>
+                {p.description && <p className="text-zinc-400 text-sm mt-1 line-clamp-2">{p.description}</p>}
+                <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-800 text-sm text-zinc-400">
+                  <span className="flex items-center gap-1"><Icons.Camera />{p.image_count || 0} kép</span>
+                  <span className="flex items-center gap-1"><Icons.Clock />{formatDate(p.created_at)}</span>
+                </div>
+                <button
+                  onClick={e => { e.stopPropagation(); setToDelete(p); }}
+                  className="mt-3 w-full py-2 text-red-400 hover:bg-red-500/10 rounded-lg flex items-center justify-center gap-2"
+                >
+                  <Icons.Trash />Törlés
+                </button>
+              </div>
             ))}
           </div>
         )}
       </main>
 
-      <Dialog open={showNew} onOpenChange={setShowNew}>
-        <DialogContent className="bg-card">
-          <DialogHeader><DialogTitle>Új Projekt</DialogTitle><DialogDescription>Add meg az adatokat</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Név</Label><Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="pl. Lakás felújítás" className="bg-background" data-testid="project-name-input"/></div>
-            <div className="space-y-2"><Label>Leírás</Label><Textarea value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Leírás..." className="bg-background"/></div>
+      <Modal open={showNew} onClose={() => setShowNew(false)} title="Új Projekt" footer={
+        <><Button variant="outline" onClick={() => setShowNew(false)}>Mégse</Button><Button onClick={handleCreate}>Létrehozás</Button></>
+      }>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm mb-1">Név</label>
+            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="pl. Lakás felújítás" className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:border-amber-500" />
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setShowNew(false)}>Mégse</Button><Button onClick={handleCreate} className="bg-primary text-primary-foreground" data-testid="create-project-btn">Létrehozás</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div>
+            <label className="block text-sm mb-1">Leírás</label>
+            <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Leírás..." rows={3} className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:border-amber-500" />
+          </div>
+        </div>
+      </Modal>
 
-      <AlertDialog open={!!toDelete} onOpenChange={() => setToDelete(null)}>
-        <AlertDialogContent className="bg-card">
-          <AlertDialogHeader><AlertDialogTitle>Törlés</AlertDialogTitle><AlertDialogDescription>Biztosan törlöd a "{toDelete?.name}" projektet?</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Mégse</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Törlés</AlertDialogAction></AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Modal open={!!toDelete} onClose={() => setToDelete(null)} title="Törlés" footer={
+        <><Button variant="outline" onClick={() => setToDelete(null)}>Mégse</Button><Button variant="danger" onClick={handleDelete}>Törlés</Button></>
+      }>
+        <p>Biztosan törlöd a "{toDelete?.name}" projektet?</p>
+      </Modal>
     </div>
   );
 }
@@ -176,63 +238,44 @@ function FloorplanViewer({ floorplan, images, onClose, onImageClick, fetchProjec
       toast.success("Elhelyezve");
       setPositioning(null);
       fetchProject();
-    } catch { toast.error("Hiba"); }
+    } catch (err) {
+      console.error(err);
+      toast.error("Hiba");
+    }
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="bg-card max-w-6xl max-h-[90vh]">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Map className="w-5 h-5"/>{floorplan.name}<Badge variant="outline">{marked.length} jelölő</Badge></DialogTitle></DialogHeader>
-        <div className="flex gap-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={onClose}>
+      <div className="bg-zinc-900 rounded-lg border border-zinc-800 w-full max-w-5xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+          <h2 className="text-lg font-bold flex items-center gap-2"><Icons.Map />{floorplan.name}<span className="text-sm text-zinc-400">({marked.length} jelölő)</span></h2>
+          <button onClick={onClose} className="text-zinc-400 hover:text-white"><Icons.X /></button>
+        </div>
+        <div className="flex gap-4 p-4">
           <div className="flex-1">
-            <div ref={ref} className={`relative bg-background rounded-lg overflow-hidden ${positioning ? 'cursor-crosshair' : ''}`} onClick={handleClick}>
-              <img src={`${API}/floorplans/${floorplan.id}/data`} alt={floorplan.name} className="w-full h-auto"/>
+            <div ref={ref} className={`relative bg-zinc-800 rounded-lg overflow-hidden ${positioning ? 'cursor-crosshair' : ''}`} onClick={handleClick}>
+              <img src={`${API}/floorplans/${floorplan.id}/data`} alt={floorplan.name} className="w-full h-auto" />
               {marked.map(img => (
-                <div key={img.id} className="absolute w-6 h-6 -ml-3 -mt-3 cursor-pointer hover:scale-125 transition-transform" style={{ left: `${img.floorplan_x}%`, top: `${img.floorplan_y}%` }} onClick={(e) => { e.stopPropagation(); onImageClick(img); }} title={img.description || img.filename}>
-                  <div className="w-full h-full bg-primary rounded-full flex items-center justify-center shadow-lg border-2 border-white"><Camera className="w-3 h-3 text-primary-foreground"/></div>
+                <div key={img.id} className="absolute w-6 h-6 -ml-3 -mt-3 cursor-pointer hover:scale-125 transition-transform" style={{ left: `${img.floorplan_x}%`, top: `${img.floorplan_y}%` }} onClick={e => { e.stopPropagation(); onImageClick(img); }}>
+                  <div className="w-full h-full bg-amber-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white"><Icons.Camera /></div>
                 </div>
               ))}
-              {positioning && <div className="absolute inset-0 bg-primary/10 flex items-center justify-center"><p className="bg-card px-4 py-2 rounded-lg shadow text-sm">Kattints az elhelyezéshez</p></div>}
+              {positioning && <div className="absolute inset-0 bg-amber-500/10 flex items-center justify-center"><span className="bg-zinc-900 px-4 py-2 rounded-lg">Kattints az elhelyezéshez</span></div>}
             </div>
           </div>
-          <div className="w-48 flex-shrink-0">
+          <div className="w-40 flex-shrink-0">
             <h4 className="text-sm font-medium mb-2">Képek elhelyezése</h4>
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {available.length === 0 ? <p className="text-xs text-muted-foreground">Mind el van helyezve</p> : available.map(img => (
-                <div key={img.id} className={`cursor-pointer rounded border-2 transition-all ${positioning?.id === img.id ? 'border-primary' : 'border-transparent hover:border-muted'}`} onClick={() => setPositioning(positioning?.id === img.id ? null : img)}>
-                  <img src={`${API}/images/${img.id}/data`} alt="" className="w-full aspect-square object-cover rounded"/>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {available.length === 0 ? <p className="text-xs text-zinc-500">Mind el van helyezve</p> : available.map(img => (
+                <div key={img.id} className={`cursor-pointer rounded border-2 ${positioning?.id === img.id ? 'border-amber-500' : 'border-transparent hover:border-zinc-600'}`} onClick={() => setPositioning(positioning?.id === img.id ? null : img)}>
+                  <img src={`${API}/images/${img.id}/data`} alt="" className="w-full aspect-square object-cover rounded" />
                 </div>
               ))}
             </div>
           </div>
         </div>
-        <DialogFooter><Button variant="outline" onClick={onClose}>Bezárás</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// Before/After Comparison
-function Comparison({ before, after, onClose }) {
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="bg-card max-w-6xl">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Columns className="w-5 h-5"/>Előtte - Utána</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Badge className="bg-orange-500/20 text-orange-400">Előtte</Badge>
-            <div className="aspect-video bg-background rounded-lg overflow-hidden"><img src={`${API}/images/${before.id}/data`} alt="Előtte" className="w-full h-full object-contain"/></div>
-            <p className="text-sm text-muted-foreground">{before.description || before.filename}</p>
-          </div>
-          <div className="space-y-2">
-            <Badge className="bg-green-500/20 text-green-400">Utána</Badge>
-            <div className="aspect-video bg-background rounded-lg overflow-hidden"><img src={`${API}/images/${after.id}/data`} alt="Utána" className="w-full h-full object-contain"/></div>
-            <p className="text-sm text-muted-foreground">{after.description || after.filename}</p>
-          </div>
-        </div>
-        <DialogFooter><Button variant="outline" onClick={onClose}>Bezárás</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 
@@ -241,45 +284,35 @@ function ProjectDetail({ project, onBack }) {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("alapszereles");
   const [loading, setLoading] = useState(true);
-  
-  // Upload state
   const [showUpload, setShowUpload] = useState(false);
   const [uploadCat, setUploadCat] = useState("alapszereles");
   const [uploadDesc, setUploadDesc] = useState("");
   const [uploadFiles, setUploadFiles] = useState([]);
   const [uploadTags, setUploadTags] = useState([]);
-  const [uploadLoc, setUploadLoc] = useState(null);
   const [uploading, setUploading] = useState(false);
-  
-  // Floorplan upload
   const [showFpUpload, setShowFpUpload] = useState(false);
   const [fpName, setFpName] = useState("");
   const [fpFile, setFpFile] = useState(null);
   const [fpUploading, setFpUploading] = useState(false);
-  
-  // View state
   const [selected, setSelected] = useState(null);
   const [editDesc, setEditDesc] = useState("");
   const [editTags, setEditTags] = useState([]);
-  const [editLoc, setEditLoc] = useState(null);
   const [toDelete, setToDelete] = useState(null);
   const [fpToDelete, setFpToDelete] = useState(null);
-  const [showLink, setShowLink] = useState(false);
-  const [comparison, setComparison] = useState(null);
   const [selectedFp, setSelectedFp] = useState(null);
-  
-  // Filters
-  const [dateFilter, setDateFilter] = useState(null);
   const [tagFilter, setTagFilter] = useState("");
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const { data: d } = await axios.get(`${API}/projects/${project.id}`);
       setData(d);
-    } catch { toast.error("Hiba"); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error(err);
+      toast.error("Hiba");
+    } finally {
+      setLoading(false);
+    }
   }, [project.id]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -294,11 +327,19 @@ function ProjectDetail({ project, onBack }) {
       fd.append("category", uploadCat);
       fd.append("description", uploadDesc);
       fd.append("tags", uploadTags.join(","));
-      if (uploadLoc) { fd.append("lat", uploadLoc.lat); fd.append("lng", uploadLoc.lng); fd.append("address", ""); }
-      try { await axios.post(`${API}/projects/${project.id}/images`, fd); ok++; } catch {}
+      try {
+        await axios.post(`${API}/projects/${project.id}/images`, fd);
+        ok++;
+      } catch (err) {
+        console.error(err);
+      }
     }
     if (ok) { toast.success(`${ok} kép feltöltve`); fetchData(); }
-    setUploading(false); setShowUpload(false); setUploadFiles([]); setUploadDesc(""); setUploadTags([]); setUploadLoc(null);
+    setUploading(false);
+    setShowUpload(false);
+    setUploadFiles([]);
+    setUploadDesc("");
+    setUploadTags([]);
   };
 
   const handleFpUpload = async () => {
@@ -311,253 +352,276 @@ function ProjectDetail({ project, onBack }) {
       await axios.post(`${API}/projects/${project.id}/floorplans`, fd);
       toast.success("Tervrajz feltöltve");
       fetchData();
-      setShowFpUpload(false); setFpName(""); setFpFile(null);
-    } catch (err) { 
+      setShowFpUpload(false);
+      setFpName("");
+      setFpFile(null);
+    } catch (err) {
       console.error(err);
-      toast.error("Hiba a feltöltéskor"); 
+      toast.error("Hiba a feltöltéskor");
     }
     setFpUploading(false);
   };
 
   const handleDeleteFp = async () => {
     if (!fpToDelete) return;
-    try { await axios.delete(`${API}/floorplans/${fpToDelete.id}`); toast.success("Törölve"); setFpToDelete(null); fetchData(); } catch { toast.error("Hiba"); }
+    try {
+      await axios.delete(`${API}/floorplans/${fpToDelete.id}`);
+      toast.success("Törölve");
+      setFpToDelete(null);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Hiba");
+    }
   };
 
   const handleUpdateImage = async () => {
     if (!selected) return;
-    try { await axios.put(`${API}/images/${selected.id}`, { description: editDesc, tags: editTags, location: editLoc }); toast.success("Mentve"); fetchData(); setSelected(null); } catch { toast.error("Hiba"); }
-  };
-
-  const handleLinkImage = async (linkedId) => {
-    if (!selected) return;
-    try { await axios.put(`${API}/images/${selected.id}`, { linked_image_id: linkedId }); toast.success("Összekapcsolva"); fetchData(); setShowLink(false); } catch { toast.error("Hiba"); }
+    try {
+      await axios.put(`${API}/images/${selected.id}`, { description: editDesc, tags: editTags });
+      toast.success("Mentve");
+      fetchData();
+      setSelected(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Hiba");
+    }
   };
 
   const handleDeleteImage = async () => {
     if (!toDelete) return;
-    try { await axios.delete(`${API}/images/${toDelete.id}`); toast.success("Törölve"); setToDelete(null); setSelected(null); fetchData(); } catch { toast.error("Hiba"); }
-  };
-
-  const openComparison = (img) => {
-    if (!img.linked_image_id) return;
-    const linked = data?.images?.find(i => i.id === img.linked_image_id);
-    if (linked) {
-      const d1 = new Date(img.created_at), d2 = new Date(linked.created_at);
-      setComparison(d1 < d2 ? { before: img, after: linked } : { before: linked, after: img });
+    try {
+      await axios.delete(`${API}/images/${toDelete.id}`);
+      toast.success("Törölve");
+      setToDelete(null);
+      setSelected(null);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Hiba");
     }
-  };
-
-  const getLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => { setUploadLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }); toast.success("Helyszín rögzítve"); },
-        () => toast.error("Nem sikerült")
-      );
-    } else toast.error("Nem támogatott");
   };
 
   const filtered = data?.images?.filter(i => {
     if (i.category !== tab) return false;
-    if (dateFilter && !i.created_at.startsWith(dateFilter.toISOString().split("T")[0])) return false;
     if (tagFilter && !i.tags?.includes(tagFilter)) return false;
     return true;
   }) || [];
 
   const allTags = [...new Set(data?.images?.flatMap(i => i.tags || []) || [])];
 
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Betöltés...</div></div>;
+  if (loading) {
+    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400">Betöltés...</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="app-header sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <header className="sticky top-0 z-10 bg-zinc-900 border-b border-zinc-800">
+        <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onBack} data-testid="back-btn"><ArrowLeft className="w-5 h-5"/></Button>
+              <button onClick={onBack} className="text-zinc-400 hover:text-white"><Icons.ArrowLeft /></button>
               <div>
-                <h1 className="text-2xl md:text-3xl font-black">{data?.name}</h1>
-                {data?.description && <p className="text-muted-foreground text-sm mt-1">{data.description}</p>}
+                <h1 className="text-2xl font-black">{data?.name}</h1>
+                {data?.description && <p className="text-zinc-400 text-sm">{data.description}</p>}
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Select value={tagFilter} onValueChange={setTagFilter}>
-                <SelectTrigger className="w-36"><Tag className="w-4 h-4 mr-2"/><SelectValue placeholder="Címke"/></SelectTrigger>
-                <SelectContent><SelectItem value="">Összes</SelectItem>{allTags.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-              </Select>
-              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-                <PopoverTrigger asChild><Button variant="outline" className={dateFilter ? "border-primary" : ""}><Calendar className="w-4 h-4 mr-2"/>{dateFilter ? formatShortDate(dateFilter) : "Dátum"}</Button></PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-card" align="end">
-                  <CalendarComponent mode="single" selected={dateFilter} onSelect={(d) => { setDateFilter(d); setShowDatePicker(false); }}/>
-                  {dateFilter && <div className="p-2 border-t"><Button variant="ghost" size="sm" className="w-full" onClick={() => { setDateFilter(null); setShowDatePicker(false); }}>Törlés</Button></div>}
-                </PopoverContent>
-              </Popover>
-              <Button onClick={() => setShowUpload(true)} className="bg-secondary text-secondary-foreground" data-testid="upload-btn"><Upload className="w-4 h-4 mr-2"/>Képfeltöltés</Button>
+            <div className="flex items-center gap-2">
+              {allTags.length > 0 && (
+                <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg">
+                  <option value="">Összes címke</option>
+                  {allTags.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              )}
+              <Button variant="secondary" onClick={() => setShowUpload(true)}><Icons.Upload />Képfeltöltés</Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Floorplans */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold flex items-center gap-2"><Map className="w-5 h-5"/>Tervrajzok</h2>
-            <Button variant="outline" size="sm" onClick={() => setShowFpUpload(true)}><Plus className="w-4 h-4 mr-1"/>Új tervrajz</Button>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold flex items-center gap-2"><Icons.Map />Tervrajzok</h2>
+            <Button variant="outline" onClick={() => setShowFpUpload(true)}><Icons.Plus />Új tervrajz</Button>
           </div>
           {data?.floorplans?.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {data.floorplans.map(fp => (
-                <Card key={fp.id} className="bg-card cursor-pointer group hover:border-primary/50" onClick={() => setSelectedFp(fp)}>
-                  <div className="aspect-video relative overflow-hidden rounded-t-lg">
-                    <img src={`${API}/floorplans/${fp.id}/data`} alt={fp.name} className="w-full h-full object-cover"/>
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><span className="text-white text-sm">Megnyitás</span></div>
+                <div key={fp.id} onClick={() => setSelectedFp(fp)} className="bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 cursor-pointer hover:border-amber-500/50">
+                  <div className="aspect-video relative">
+                    <img src={`${API}/floorplans/${fp.id}/data`} alt={fp.name} className="w-full h-full object-cover" />
                   </div>
-                  <CardContent className="p-3">
+                  <div className="p-3">
                     <p className="text-sm font-medium truncate">{fp.name}</p>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-muted-foreground">{fp.marker_count || 0} jelölő</span>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={(e) => { e.stopPropagation(); setFpToDelete(fp); }}><Trash2 className="w-3 h-3"/></Button>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-xs text-zinc-400">{fp.marker_count || 0} jelölő</span>
+                      <button onClick={e => { e.stopPropagation(); setFpToDelete(fp); }} className="text-red-400 hover:text-red-300"><Icons.Trash /></button>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 border border-dashed rounded-lg">
-              <FileImage className="w-12 h-12 mx-auto text-muted-foreground mb-2"/>
-              <p className="text-muted-foreground text-sm">Nincs tervrajz</p>
-              <Button variant="outline" size="sm" className="mt-2" onClick={() => setShowFpUpload(true)}>Feltöltés</Button>
+            <div className="text-center py-8 border border-dashed border-zinc-800 rounded-lg">
+              <div className="text-zinc-600 mb-2"><Icons.File /></div>
+              <p className="text-zinc-500 text-sm">Nincs tervrajz</p>
+              <Button variant="outline" onClick={() => setShowFpUpload(true)} className="mt-2">Feltöltés</Button>
             </div>
           )}
         </div>
 
         {/* Category Tabs */}
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="bg-muted p-1 rounded-lg mb-8">
-            {Object.entries(CATEGORIES).map(([k, { label }]) => (
-              <TabsTrigger key={k} value={k} className="flex-1 md:flex-none" data-testid={`tab-${k}`}>{label}<Badge variant="secondary" className="ml-2">{data?.images?.filter(i => i.category === k).length || 0}</Badge></TabsTrigger>
-            ))}
-          </TabsList>
-
-          {Object.keys(CATEGORIES).map(cat => (
-            <TabsContent key={cat} value={cat}>
-              {filtered.length === 0 ? (
-                <div className="text-center py-16">
-                  <ImageIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4"/>
-                  <h2 className="text-xl font-bold mb-2">{dateFilter || tagFilter ? "Nincs találat" : "Nincs kép"}</h2>
-                  <Button onClick={() => { setUploadCat(cat); setShowUpload(true); }} className="bg-secondary text-secondary-foreground"><Upload className="w-4 h-4 mr-2"/>Feltöltés</Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {filtered.map(img => (
-                    <Card key={img.id} className="bg-card cursor-pointer overflow-hidden hover:border-primary/50" onClick={() => { setSelected(img); setEditDesc(img.description || ""); setEditTags(img.tags || []); setEditLoc(img.location); }} data-testid={`image-card-${img.id}`}>
-                      <div className="aspect-square relative">
-                        <img src={`${API}/images/${img.id}/data`} alt="" className="w-full h-full object-cover" loading="lazy"/>
-                        <div className="absolute top-2 right-2 flex gap-1">
-                          {img.location && <div className="bg-black/60 p-1 rounded"><MapPin className="w-3 h-3 text-white"/></div>}
-                          {img.linked_image_id && <div className="bg-black/60 p-1 rounded"><Link2 className="w-3 h-3 text-white"/></div>}
-                          {img.floorplan_id && <div className="bg-black/60 p-1 rounded"><Map className="w-3 h-3 text-white"/></div>}
-                        </div>
-                      </div>
-                      <CardContent className="p-3">
-                        <p className="text-sm truncate">{img.description || img.filename}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-xs text-muted-foreground">{formatShortDate(img.created_at)}</span>
-                          {img.tags?.length > 0 && <div className="flex gap-1">{img.tags.slice(0,2).map(t => <Badge key={t} variant="outline" className="text-xs py-0 px-1">{t}</Badge>)}</div>}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+          {Object.entries(CATEGORIES).map(([k, label]) => (
+            <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-lg whitespace-nowrap ${tab === k ? 'bg-amber-500 text-black font-medium' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'}`}>
+              {label}
+              <span className="ml-2 text-sm opacity-70">({data?.images?.filter(i => i.category === k).length || 0})</span>
+            </button>
           ))}
-        </Tabs>
-      </main>
+        </div>
 
-      {/* Upload Image Dialog */}
-      <Dialog open={showUpload} onOpenChange={setShowUpload}>
-        <DialogContent className="bg-card max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Képfeltöltés</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Kategória</Label><div className="flex gap-2 flex-wrap">{Object.entries(CATEGORIES).map(([k, { label }]) => <Button key={k} variant={uploadCat === k ? "default" : "outline"} size="sm" onClick={() => setUploadCat(k)} className={uploadCat === k ? "bg-primary" : ""}>{label}</Button>)}</div></div>
-            <div className="space-y-2"><Label>Képek</Label><div className="drop-zone p-8 text-center cursor-pointer" onClick={() => document.getElementById("file-input")?.click()}><Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2"/><p className="text-muted-foreground text-sm">{uploadFiles.length > 0 ? `${uploadFiles.length} kép` : "Kattints"}</p><input id="file-input" type="file" accept="image/*" multiple onChange={(e) => setUploadFiles(Array.from(e.target.files || []))} className="hidden"/></div></div>
-            <div className="space-y-2"><Label>Leírás</Label><Textarea value={uploadDesc} onChange={(e) => setUploadDesc(e.target.value)} placeholder="Leírás..." className="bg-background"/></div>
-            <div className="space-y-2"><Label>Címkék</Label><div className="flex flex-wrap gap-2">{PREDEFINED_TAGS.map(t => <Badge key={t} variant={uploadTags.includes(t) ? "default" : "outline"} className={`cursor-pointer ${uploadTags.includes(t) ? "bg-primary" : ""}`} onClick={() => setUploadTags(uploadTags.includes(t) ? uploadTags.filter(x => x !== t) : [...uploadTags, t])}>{t}</Badge>)}</div></div>
-            <div className="space-y-2"><Label>GPS</Label><div className="flex gap-2"><Button variant="outline" onClick={getLocation} className="flex-1"><MapPin className="w-4 h-4 mr-2"/>{uploadLoc ? `${uploadLoc.lat.toFixed(4)}, ${uploadLoc.lng.toFixed(4)}` : "Rögzítés"}</Button>{uploadLoc && <Button variant="ghost" size="icon" onClick={() => setUploadLoc(null)}><X className="w-4 h-4"/></Button>}</div></div>
+        {/* Images */}
+        {filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="text-zinc-600 mb-4"><Icons.Image /></div>
+            <h2 className="text-xl font-bold mb-2">{tagFilter ? "Nincs találat" : "Nincs kép"}</h2>
+            <Button variant="secondary" onClick={() => { setUploadCat(tab); setShowUpload(true); }}><Icons.Upload />Feltöltés</Button>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setShowUpload(false)}>Mégse</Button><Button onClick={handleUpload} disabled={uploading || !uploadFiles.length} className="bg-primary text-primary-foreground">{uploading ? "Feltöltés..." : "Feltöltés"}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Floorplan Upload Dialog */}
-      <Dialog open={showFpUpload} onOpenChange={setShowFpUpload}>
-        <DialogContent className="bg-card">
-          <DialogHeader><DialogTitle>Új tervrajz</DialogTitle><DialogDescription>Tölts fel egy tervrajzot</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Név</Label><Input value={fpName} onChange={(e) => setFpName(e.target.value)} placeholder="pl. Földszint" className="bg-background"/></div>
-            <div className="space-y-2"><Label>Fájl</Label><div className="drop-zone p-8 text-center cursor-pointer" onClick={() => document.getElementById("fp-input")?.click()}><FileImage className="w-8 h-8 mx-auto text-muted-foreground mb-2"/><p className="text-muted-foreground text-sm">{fpFile ? fpFile.name : "Kattints"}</p><input id="fp-input" type="file" accept="image/*" onChange={(e) => setFpFile(e.target.files?.[0] || null)} className="hidden"/></div></div>
-          </div>
-          <DialogFooter><Button variant="outline" onClick={() => setShowFpUpload(false)}>Mégse</Button><Button onClick={handleFpUpload} disabled={fpUploading || !fpFile || !fpName.trim()} className="bg-primary text-primary-foreground">{fpUploading ? "Feltöltés..." : "Feltöltés"}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Floorplan Viewer */}
-      {selectedFp && <FloorplanViewer floorplan={selectedFp} images={data?.images || []} onClose={() => setSelectedFp(null)} onImageClick={(img) => { setSelectedFp(null); setSelected(img); setEditDesc(img.description || ""); setEditTags(img.tags || []); setEditLoc(img.location); }} fetchProject={fetchData}/>}
-
-      {/* Image Lightbox */}
-      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="bg-card max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 flex-wrap">{selected?.filename}<Badge>{CATEGORIES[selected?.category]?.label}</Badge>
-              {selected?.linked_image_id && <Button variant="outline" size="sm" onClick={() => openComparison(selected)}><Columns className="w-4 h-4 mr-1"/>Összehasonlítás</Button>}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="bg-background rounded-lg overflow-hidden flex items-center justify-center">{selected && <img src={`${API}/images/${selected.id}/data`} alt="" className="max-h-[50vh] object-contain"/>}</div>
-            <div className="space-y-2"><Label>Leírás</Label><Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="bg-background"/></div>
-            <div className="space-y-2"><Label>Címkék</Label><div className="flex flex-wrap gap-2">{PREDEFINED_TAGS.map(t => <Badge key={t} variant={editTags.includes(t) ? "default" : "outline"} className={`cursor-pointer ${editTags.includes(t) ? "bg-primary" : ""}`} onClick={() => setEditTags(editTags.includes(t) ? editTags.filter(x => x !== t) : [...editTags, t])}>{t}</Badge>)}</div></div>
-            <div className="space-y-2"><Label>Helyszín</Label>{editLoc ? <div className="flex items-center gap-2"><span className="flex-1 p-2 bg-background rounded text-sm"><MapPin className="w-4 h-4 inline mr-2"/>{editLoc.lat.toFixed(6)}, {editLoc.lng.toFixed(6)}</span><Button variant="ghost" size="icon" onClick={() => setEditLoc(null)}><X className="w-4 h-4"/></Button><Button variant="outline" size="sm" onClick={() => window.open(`https://maps.google.com?q=${editLoc.lat},${editLoc.lng}`, '_blank')}>Térkép</Button></div> : <p className="text-sm text-muted-foreground">Nincs</p>}</div>
-            <div className="space-y-2"><Label>Előtte-Utána</Label><Button variant="outline" onClick={() => setShowLink(true)} className="w-full"><Link2 className="w-4 h-4 mr-2"/>{selected?.linked_image_id ? "Módosítás" : "Összekapcsolás"}</Button></div>
-            <p className="text-sm text-muted-foreground">Feltöltve: {selected && formatDate(selected.created_at)}</p>
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="destructive" onClick={() => setToDelete(selected)} className="sm:mr-auto"><Trash2 className="w-4 h-4 mr-2"/>Törlés</Button>
-            <Button variant="outline" onClick={() => setSelected(null)}>Bezárás</Button>
-            <Button onClick={handleUpdateImage} className="bg-primary text-primary-foreground"><Edit3 className="w-4 h-4 mr-2"/>Mentés</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Link Dialog */}
-      <Dialog open={showLink} onOpenChange={setShowLink}>
-        <DialogContent className="bg-card max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Összekapcsolás</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-3 gap-3 py-4">
-            {data?.images?.filter(i => i.id !== selected?.id).map(img => (
-              <div key={img.id} className={`cursor-pointer rounded-lg overflow-hidden border-2 ${selected?.linked_image_id === img.id ? "border-primary" : "border-transparent hover:border-muted"}`} onClick={() => handleLinkImage(img.id)}>
-                <img src={`${API}/images/${img.id}/data`} alt="" className="aspect-square object-cover"/>
-                <div className="p-2 text-xs text-muted-foreground truncate">{formatShortDate(img.created_at)}</div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filtered.map(img => (
+              <div key={img.id} onClick={() => { setSelected(img); setEditDesc(img.description || ""); setEditTags(img.tags || []); }} className="bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 cursor-pointer hover:border-amber-500/50">
+                <div className="aspect-square relative">
+                  <img src={`${API}/images/${img.id}/data`} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    {img.location && <div className="bg-black/60 p-1 rounded"><Icons.MapPin /></div>}
+                    {img.linked_image_id && <div className="bg-black/60 p-1 rounded"><Icons.Link /></div>}
+                    {img.floorplan_id && <div className="bg-black/60 p-1 rounded text-xs"><Icons.Map /></div>}
+                  </div>
+                </div>
+                <div className="p-3">
+                  <p className="text-sm truncate">{img.description || img.filename}</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-xs text-zinc-400">{formatDate(img.created_at)}</span>
+                    {img.tags?.length > 0 && <span className="text-xs text-zinc-500">{img.tags[0]}</span>}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
-          <DialogFooter>{selected?.linked_image_id && <Button variant="outline" onClick={() => handleLinkImage("")} className="mr-auto">Törlés</Button>}<Button variant="outline" onClick={() => setShowLink(false)}>Bezárás</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
+      </main>
 
-      {/* Comparison */}
-      {comparison && <Comparison before={comparison.before} after={comparison.after} onClose={() => setComparison(null)}/>}
+      {/* Upload Image Modal */}
+      <Modal open={showUpload} onClose={() => setShowUpload(false)} title="Képfeltöltés" footer={
+        <><Button variant="outline" onClick={() => setShowUpload(false)}>Mégse</Button><Button onClick={handleUpload} disabled={uploading || !uploadFiles.length}>{uploading ? "Feltöltés..." : "Feltöltés"}</Button></>
+      }>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm mb-2">Kategória</label>
+            <div className="flex gap-2 flex-wrap">
+              {Object.entries(CATEGORIES).map(([k, label]) => (
+                <button key={k} onClick={() => setUploadCat(k)} className={`px-3 py-1 rounded-lg text-sm ${uploadCat === k ? 'bg-amber-500 text-black' : 'bg-zinc-800'}`}>{label}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm mb-2">Képek</label>
+            <div onClick={() => document.getElementById("file-input")?.click()} className="border-2 border-dashed border-zinc-700 rounded-lg p-8 text-center cursor-pointer hover:border-amber-500">
+              <Icons.Upload />
+              <p className="text-zinc-400 mt-2">{uploadFiles.length > 0 ? `${uploadFiles.length} kép kiválasztva` : "Kattints a kiválasztáshoz"}</p>
+              <input id="file-input" type="file" accept="image/*" multiple onChange={e => setUploadFiles(Array.from(e.target.files || []))} className="hidden" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm mb-2">Leírás</label>
+            <textarea value={uploadDesc} onChange={e => setUploadDesc(e.target.value)} placeholder="Leírás..." rows={2} className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg" />
+          </div>
+          <div>
+            <label className="block text-sm mb-2">Címkék</label>
+            <div className="flex flex-wrap gap-2">
+              {TAGS.map(t => (
+                <button key={t} onClick={() => setUploadTags(uploadTags.includes(t) ? uploadTags.filter(x => x !== t) : [...uploadTags, t])} className={`px-2 py-1 rounded text-xs ${uploadTags.includes(t) ? 'bg-amber-500 text-black' : 'bg-zinc-800'}`}>{t}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Modal>
 
-      {/* Delete Image */}
-      <AlertDialog open={!!toDelete} onOpenChange={() => setToDelete(null)}>
-        <AlertDialogContent className="bg-card"><AlertDialogHeader><AlertDialogTitle>Törlés</AlertDialogTitle><AlertDialogDescription>Biztosan törlöd?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Mégse</AlertDialogCancel><AlertDialogAction onClick={handleDeleteImage} className="bg-destructive text-destructive-foreground">Törlés</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
-      </AlertDialog>
+      {/* Floorplan Upload Modal */}
+      <Modal open={showFpUpload} onClose={() => setShowFpUpload(false)} title="Új tervrajz" footer={
+        <><Button variant="outline" onClick={() => setShowFpUpload(false)}>Mégse</Button><Button onClick={handleFpUpload} disabled={fpUploading || !fpFile || !fpName.trim()}>{fpUploading ? "Feltöltés..." : "Feltöltés"}</Button></>
+      }>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm mb-1">Név</label>
+            <input type="text" value={fpName} onChange={e => setFpName(e.target.value)} placeholder="pl. Földszint" className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg" />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Fájl</label>
+            <div onClick={() => document.getElementById("fp-input")?.click()} className="border-2 border-dashed border-zinc-700 rounded-lg p-8 text-center cursor-pointer hover:border-amber-500">
+              <Icons.File />
+              <p className="text-zinc-400 mt-2">{fpFile ? fpFile.name : "Kattints a kiválasztáshoz"}</p>
+              <input id="fp-input" type="file" accept="image/*" onChange={e => setFpFile(e.target.files?.[0] || null)} className="hidden" />
+            </div>
+          </div>
+        </div>
+      </Modal>
 
-      {/* Delete Floorplan */}
-      <AlertDialog open={!!fpToDelete} onOpenChange={() => setFpToDelete(null)}>
-        <AlertDialogContent className="bg-card"><AlertDialogHeader><AlertDialogTitle>Tervrajz törlése</AlertDialogTitle><AlertDialogDescription>Biztosan törlöd?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Mégse</AlertDialogCancel><AlertDialogAction onClick={handleDeleteFp} className="bg-destructive text-destructive-foreground">Törlés</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
-      </AlertDialog>
+      {/* Floorplan Viewer */}
+      {selectedFp && (
+        <FloorplanViewer
+          floorplan={selectedFp}
+          images={data?.images || []}
+          onClose={() => setSelectedFp(null)}
+          onImageClick={img => { setSelectedFp(null); setSelected(img); setEditDesc(img.description || ""); setEditTags(img.tags || []); }}
+          fetchProject={fetchData}
+        />
+      )}
+
+      {/* Image Detail Modal */}
+      <Modal open={!!selected} onClose={() => setSelected(null)} title={selected?.filename || "Kép"} footer={
+        <>
+          <Button variant="danger" onClick={() => setToDelete(selected)}><Icons.Trash />Törlés</Button>
+          <Button variant="outline" onClick={() => setSelected(null)}>Bezárás</Button>
+          <Button onClick={handleUpdateImage}>Mentés</Button>
+        </>
+      }>
+        {selected && (
+          <div className="space-y-4">
+            <img src={`${API}/images/${selected.id}/data`} alt="" className="w-full max-h-64 object-contain bg-zinc-800 rounded-lg" />
+            <div>
+              <label className="block text-sm mb-1">Leírás</label>
+              <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={2} className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg" />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Címkék</label>
+              <div className="flex flex-wrap gap-2">
+                {TAGS.map(t => (
+                  <button key={t} onClick={() => setEditTags(editTags.includes(t) ? editTags.filter(x => x !== t) : [...editTags, t])} className={`px-2 py-1 rounded text-xs ${editTags.includes(t) ? 'bg-amber-500 text-black' : 'bg-zinc-800'}`}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-zinc-500">Feltöltve: {formatDate(selected.created_at)}</p>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Image Confirm */}
+      <Modal open={!!toDelete} onClose={() => setToDelete(null)} title="Törlés" footer={
+        <><Button variant="outline" onClick={() => setToDelete(null)}>Mégse</Button><Button variant="danger" onClick={handleDeleteImage}>Törlés</Button></>
+      }>
+        <p>Biztosan törlöd ezt a képet?</p>
+      </Modal>
+
+      {/* Delete Floorplan Confirm */}
+      <Modal open={!!fpToDelete} onClose={() => setFpToDelete(null)} title="Tervrajz törlése" footer={
+        <><Button variant="outline" onClick={() => setFpToDelete(null)}>Mégse</Button><Button variant="danger" onClick={handleDeleteFp}>Törlés</Button></>
+      }>
+        <p>Biztosan törlöd a "{fpToDelete?.name}" tervrajzot?</p>
+      </Modal>
     </div>
   );
 }
@@ -566,9 +630,9 @@ function ProjectDetail({ project, onBack }) {
 export default function App() {
   const [project, setProject] = useState(null);
   return (
-    <div className="app-container">
-      <Toaster position="top-right" richColors theme="dark"/>
-      {project ? <ProjectDetail project={project} onBack={() => setProject(null)}/> : <ProjectsList onSelect={setProject}/>}
-    </div>
+    <>
+      <Toaster position="top-right" richColors theme="dark" />
+      {project ? <ProjectDetail project={project} onBack={() => setProject(null)} /> : <ProjectsList onSelect={setProject} />}
+    </>
   );
 }
