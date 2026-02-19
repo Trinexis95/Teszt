@@ -278,6 +278,11 @@ async def get_floorplan_data(floorplan_id: str):
 @api_router.get("/floorplans/{floorplan_id}/images")
 async def get_floorplan_images(floorplan_id: str):
     """Get all images marked on a specific floorplan"""
+    # Verify floorplan exists
+    floorplan = await db.floorplans.find_one({"id": floorplan_id})
+    if not floorplan:
+        raise HTTPException(status_code=404, detail="Tervrajz nem található")
+    
     images = await db.images.find(
         {"floorplan_id": floorplan_id},
         {"_id": 0, "data": 0}
