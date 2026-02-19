@@ -284,6 +284,83 @@ class BauDokAPITester:
         )
         return success
 
+    def test_upload_floorplan(self, project_id, name="Test Floorplan"):
+        """Test floorplan upload"""
+        img_buffer = self.create_test_image()
+        files = {
+            'file': ('floorplan.jpg', img_buffer, 'image/jpeg')
+        }
+        data = {
+            'name': name
+        }
+        
+        success, response = self.run_test(
+            f"Upload Floorplan: {name}",
+            "POST",
+            f"projects/{project_id}/floorplans",
+            200,
+            data=data,
+            files=files
+        )
+        if success and 'id' in response:
+            return response['id']
+        return None
+
+    def test_get_floorplans(self, project_id):
+        """Test getting project floorplans"""
+        success, response = self.run_test(
+            f"Get Project Floorplans: {project_id}",
+            "GET",
+            f"projects/{project_id}/floorplans",
+            200
+        )
+        return success, response
+
+    def test_get_floorplan_data(self, floorplan_id):
+        """Test getting floorplan binary data"""
+        success, _ = self.run_test(
+            f"Get Floorplan Data: {floorplan_id}",
+            "GET",
+            f"floorplans/{floorplan_id}/data",
+            200
+        )
+        return success
+
+    def test_get_floorplan_images(self, floorplan_id):
+        """Test getting images marked on floorplan"""
+        success, response = self.run_test(
+            f"Get Floorplan Images: {floorplan_id}",
+            "GET",
+            f"floorplans/{floorplan_id}/images",
+            200
+        )
+        return success, response
+
+    def test_position_image_on_floorplan(self, image_id, floorplan_id, x=50.0, y=50.0):
+        """Test positioning image on floorplan"""
+        success, response = self.run_test(
+            f"Position Image {image_id} on Floorplan {floorplan_id} at ({x}, {y})",
+            "PUT",
+            f"images/{image_id}",
+            200,
+            data={
+                "floorplan_id": floorplan_id,
+                "floorplan_x": x,
+                "floorplan_y": y
+            }
+        )
+        return success
+
+    def test_delete_floorplan(self, floorplan_id):
+        """Test floorplan deletion"""
+        success, response = self.run_test(
+            f"Delete Floorplan: {floorplan_id}",
+            "DELETE",
+            f"floorplans/{floorplan_id}",
+            200
+        )
+        return success
+
     def test_delete_project(self, project_id):
         """Test project deletion"""
         success, response = self.run_test(
