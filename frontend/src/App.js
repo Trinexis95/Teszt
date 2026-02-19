@@ -555,7 +555,7 @@ const ProjectDetail = ({ project, onBack }) => {
       filtered = filtered.filter(img => img.created_at.startsWith(filterDate));
     }
     
-    if (tagFilter) {
+    if (tagFilter && tagFilter !== "all") {
       filtered = filtered.filter(img => img.tags?.includes(tagFilter));
     }
     
