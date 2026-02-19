@@ -229,6 +229,51 @@ class BauDokAPITester:
         )
         return success
 
+    def test_update_image_tags(self, image_id, tags):
+        """Test updating image tags"""
+        success, response = self.run_test(
+            f"Update Image Tags: {image_id} with [{', '.join(tags)}]",
+            "PUT",
+            f"images/{image_id}",
+            200,
+            data={"tags": tags}
+        )
+        return success
+
+    def test_update_image_location(self, image_id, lat, lng, address=""):
+        """Test updating image GPS location"""
+        location = {"lat": lat, "lng": lng, "address": address}
+        success, response = self.run_test(
+            f"Update Image Location: {image_id} to {lat}, {lng}",
+            "PUT",
+            f"images/{image_id}",
+            200,
+            data={"location": location}
+        )
+        return success
+
+    def test_link_images(self, image_id, linked_image_id):
+        """Test linking two images together"""
+        success, response = self.run_test(
+            f"Link Image {image_id} to {linked_image_id}",
+            "PUT",
+            f"images/{image_id}",
+            200,
+            data={"linked_image_id": linked_image_id}
+        )
+        return success
+
+    def test_unlink_image(self, image_id):
+        """Test unlinking image"""
+        success, response = self.run_test(
+            f"Unlink Image: {image_id}",
+            "PUT",
+            f"images/{image_id}",
+            200,
+            data={"linked_image_id": ""}
+        )
+        return success
+
     def test_delete_image(self, image_id):
         """Test image deletion"""
         success, response = self.run_test(
