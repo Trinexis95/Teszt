@@ -617,7 +617,7 @@ const ProjectDetail = ({ project, onBack }) => {
                   <SelectValue placeholder="Címke szűrő" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Összes címke</SelectItem>
+                  <SelectItem value="all">Összes címke</SelectItem>
                   {usedTags.map(tag => (
                     <SelectItem key={tag} value={tag}>{tag}</SelectItem>
                   ))}
