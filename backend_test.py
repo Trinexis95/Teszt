@@ -137,19 +137,41 @@ class BauDokAPITester:
         )
         return success, response
 
-    def test_upload_image(self, project_id, category, description="Test image"):
-        """Test image upload"""
+    def test_get_tags(self):
+        """Test getting predefined tags"""
+        success, response = self.run_test(
+            "Get Predefined Tags",
+            "GET",
+            "tags",
+            200
+        )
+        return success, response
+
+    def test_upload_image(self, project_id, category, description="Test image", tags="", lat=None, lng=None, address=""):
+        """Test image upload with tags and GPS location"""
         img_buffer = self.create_test_image()
         files = {
             'file': ('test.jpg', img_buffer, 'image/jpeg')
         }
         data = {
             'category': category,
-            'description': description
+            'description': description,
+            'tags': tags,
+            'address': address
         }
+        if lat is not None:
+            data['lat'] = lat
+        if lng is not None:
+            data['lng'] = lng
+        
+        test_name = f"Upload Image to {category}"
+        if tags:
+            test_name += f" with tags: {tags}"
+        if lat is not None and lng is not None:
+            test_name += f" with GPS: {lat}, {lng}"
         
         success, response = self.run_test(
-            f"Upload Image to {category}",
+            test_name,
             "POST",
             f"projects/{project_id}/images",
             200,
