@@ -484,12 +484,42 @@ class BauDokAPITester:
             # Re-link for further testing
             self.test_link_images(after_image, before_image)
 
+        # Test NEW FLOORPLAN FUNCTIONALITY
+        self.log("🏗️  Testing Floorplan Functionality...")
+        
+        # Test floorplan upload
+        floorplan_id = self.test_upload_floorplan(project_id, "Ground Floor Plan")
+        if not floorplan_id:
+            self.log("❌ Floorplan upload failed")
+        else:
+            # Test getting project floorplans
+            self.test_get_floorplans(project_id)
+            
+            # Test getting floorplan data
+            self.test_get_floorplan_data(floorplan_id)
+            
+            # Test positioning images on floorplan
+            if uploaded_images:
+                image_id = uploaded_images[0][0]
+                self.test_position_image_on_floorplan(image_id, floorplan_id, 25.0, 75.0)
+                
+                # Test getting images on floorplan
+                self.test_get_floorplan_images(floorplan_id)
+                
+                # Position another image if available
+                if len(uploaded_images) > 1:
+                    image_id2 = uploaded_images[1][0]
+                    self.test_position_image_on_floorplan(image_id2, floorplan_id, 80.0, 20.0)
+            
+            # Test floorplan deletion (should unlink positioned images)
+            self.test_delete_floorplan(floorplan_id)
+
         # Test image deletion (this should also remove links)
         if uploaded_images:
             image_id_to_delete = uploaded_images[0][0]
             self.test_delete_image(image_id_to_delete)
 
-        # Test project deletion (this will also delete remaining images)
+        # Test project deletion (this will also delete remaining images and floorplans)
         self.test_delete_project(project_id)
 
         # Test getting non-existent resources (should return 404)
