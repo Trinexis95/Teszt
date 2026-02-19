@@ -509,7 +509,7 @@ const ProjectDetail = ({ project, onBack }) => {
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={tagFilter} onValueChange={setTagFilter}>
                 <SelectTrigger className="w-40" data-testid="tag-filter"><Tag className="w-4 h-4 mr-2" /><SelectValue placeholder="Címke" /></SelectTrigger>
-                <SelectContent><SelectItem value="">Összes</SelectItem>{usedTags.map(tag => (<SelectItem key={tag} value={tag}>{tag}</SelectItem>))}</SelectContent>
+                <SelectContent><SelectItem value="all">Összes</SelectItem>{usedTags.map(tag => (<SelectItem key={tag} value={tag}>{tag}</SelectItem>))}</SelectContent>
               </Select>
               <Popover open={showDateFilter} onOpenChange={setShowDateFilter}>
                 <PopoverTrigger asChild><Button variant="outline" className={dateFilter ? "border-primary text-primary" : ""} data-testid="date-filter-btn"><Calendar className="w-4 h-4 mr-2" />{dateFilter ? formatShortDate(dateFilter) : "Dátum"}</Button></PopoverTrigger>
