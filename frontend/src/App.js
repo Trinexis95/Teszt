@@ -398,7 +398,7 @@ const ProjectDetail = ({ project, onBack }) => {
   const [editingLocation, setEditingLocation] = useState(null);
   const [deleteImage, setDeleteImage] = useState(null);
   const [dateFilter, setDateFilter] = useState(null);
-  const [tagFilter, setTagFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("all");
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [comparisonImages, setComparisonImages] = useState(null);
