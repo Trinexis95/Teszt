@@ -303,6 +303,13 @@ class BauDokAPITester:
             self.log("❌ API root test failed - stopping tests")
             return False
 
+        # Test predefined tags endpoint
+        success, tags_response = self.test_get_tags()
+        if not success:
+            self.log("❌ Tags endpoint test failed")
+        else:
+            self.log(f"✅ Found {len(tags_response.get('tags', []))} predefined tags")
+
         # Test project creation
         project_id = self.test_create_project("Test Project", "Test project description")
         if not project_id:
@@ -322,14 +329,35 @@ class BauDokAPITester:
         # Test project update
         self.test_update_project(project_id, "Updated Test Project", "Updated description")
 
-        # Test image uploads for all categories
+        # Test image uploads for all categories with new features
         categories = ["alapszereles", "szerelvenyezes", "atadas"]
         uploaded_images = []
         
-        for category in categories:
-            image_id = self.test_upload_image(project_id, category, f"Test image for {category}")
+        # Test basic uploads
+        for i, category in enumerate(categories):
+            # Test image upload with tags
+            tags = f"villanyszerelés,hiba" if i == 0 else f"csövezés,javítás" if i == 1 else "festés,burkolás"
+            image_id = self.test_upload_image(
+                project_id, 
+                category, 
+                f"Test image for {category}",
+                tags=tags
+            )
             if image_id:
                 uploaded_images.append((image_id, category))
+
+        # Test image upload with GPS location
+        gps_image_id = self.test_upload_image(
+            project_id, 
+            "alapszereles", 
+            "GPS tagged image",
+            tags="villanyszerelés,GPS",
+            lat=47.4979,
+            lng=19.0402,
+            address="Budapest, Hungary"
+        )
+        if gps_image_id:
+            uploaded_images.append((gps_image_id, "alapszereles"))
 
         # Test getting project images
         self.test_get_project_images(project_id)
@@ -337,6 +365,11 @@ class BauDokAPITester:
         # Test filtering by category
         for category in categories:
             self.test_get_project_images(project_id, category=category)
+
+        # Test filtering by tags
+        self.test_get_project_images(project_id, tag="villanyszerelés")
+        self.test_get_project_images(project_id, tag="csövezés")
+        self.test_get_project_images(project_id, tag="festés")
 
         # Test date filtering
         today = datetime.now().strftime("%Y-%m-%d")
@@ -350,7 +383,31 @@ class BauDokAPITester:
             # Test updating image description
             self.test_update_image_description(image_id, f"Updated description for {category}")
 
-        # Test image deletion
+        # Test tag updates
+        if len(uploaded_images) >= 2:
+            image_id = uploaded_images[0][0]
+            self.test_update_image_tags(image_id, ["szigetelés", "gipszkarton", "javítás"])
+
+        # Test location updates
+        if len(uploaded_images) >= 1:
+            image_id = uploaded_images[0][0]
+            self.test_update_image_location(image_id, 47.5636, 19.0947, "Pest, Hungary")
+
+        # Test image linking (before/after functionality)
+        if len(uploaded_images) >= 2:
+            before_image = uploaded_images[0][0]
+            after_image = uploaded_images[1][0]
+            
+            # Link images
+            self.test_link_images(before_image, after_image)
+            
+            # Test unlinking
+            self.test_unlink_image(before_image)
+            
+            # Re-link for further testing
+            self.test_link_images(after_image, before_image)
+
+        # Test image deletion (this should also remove links)
         if uploaded_images:
             image_id_to_delete = uploaded_images[0][0]
             self.test_delete_image(image_id_to_delete)
