@@ -35,6 +35,27 @@ PREDEFINED_TAGS = [
 
 # --- Models ---
 
+class FloorplanModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    name: str
+    filename: str = ""
+    content_type: str = "image/jpeg"
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class FloorplanCreate(BaseModel):
+    name: str
+
+class FloorplanResponse(BaseModel):
+    id: str
+    project_id: str
+    name: str
+    filename: str
+    content_type: str
+    created_at: str
+    marker_count: int = 0
+
 class ImageModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -45,6 +66,9 @@ class ImageModel(BaseModel):
     tags: List[str] = []
     location: Optional[dict] = None  # {lat: float, lng: float, address: str}
     linked_image_id: Optional[str] = None  # For before/after comparison
+    floorplan_id: Optional[str] = None  # Which floorplan this image is marked on
+    floorplan_x: Optional[float] = None  # X position on floorplan (0-100%)
+    floorplan_y: Optional[float] = None  # Y position on floorplan (0-100%)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class ProjectModel(BaseModel):
@@ -69,6 +93,9 @@ class ImageUpdate(BaseModel):
     tags: Optional[List[str]] = None
     location: Optional[dict] = None
     linked_image_id: Optional[str] = None
+    floorplan_id: Optional[str] = None
+    floorplan_x: Optional[float] = None
+    floorplan_y: Optional[float] = None
 
 class ImageResponse(BaseModel):
     id: str
@@ -79,6 +106,9 @@ class ImageResponse(BaseModel):
     tags: List[str] = []
     location: Optional[dict] = None
     linked_image_id: Optional[str] = None
+    floorplan_id: Optional[str] = None
+    floorplan_x: Optional[float] = None
+    floorplan_y: Optional[float] = None
     created_at: str
 
 class ProjectWithImages(BaseModel):
@@ -89,6 +119,7 @@ class ProjectWithImages(BaseModel):
     updated_at: str
     image_count: int
     images: List[ImageResponse]
+    floorplans: List[FloorplanResponse] = []
 
 # --- Project Endpoints ---
 
@@ -119,7 +150,7 @@ async def get_projects(search: Optional[str] = None):
     projects = await db.projects.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return projects
 
-@api_router.get("/projects/{project_id}", response_model=ProjectWithImages)
+@api_router.get("/projects/{project_id}")
 async def get_project(project_id: str):
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
@@ -139,8 +170,25 @@ async def get_project(project_id: str):
             img["location"] = None
         if "linked_image_id" not in img:
             img["linked_image_id"] = None
+        if "floorplan_id" not in img:
+            img["floorplan_id"] = None
+        if "floorplan_x" not in img:
+            img["floorplan_x"] = None
+        if "floorplan_y" not in img:
+            img["floorplan_y"] = None
     
-    return {**project, "images": images}
+    # Get floorplans for this project
+    floorplans = await db.floorplans.find(
+        {"project_id": project_id},
+        {"_id": 0, "data": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Add marker count to each floorplan
+    for fp in floorplans:
+        marker_count = await db.images.count_documents({"floorplan_id": fp["id"]})
+        fp["marker_count"] = marker_count
+    
+    return {**project, "images": images, "floorplans": floorplans}
 
 @api_router.put("/projects/{project_id}", response_model=ProjectModel)
 async def update_project(project_id: str, update: ProjectUpdate):
@@ -161,11 +209,101 @@ async def delete_project(project_id: str):
     if not project:
         raise HTTPException(status_code=404, detail="Projekt nem található")
     
-    # Delete all images for this project
+    # Delete all images and floorplans for this project
     await db.images.delete_many({"project_id": project_id})
+    await db.floorplans.delete_many({"project_id": project_id})
     await db.projects.delete_one({"id": project_id})
     
     return {"message": "Projekt törölve"}
+
+# --- Floorplan Endpoints ---
+
+@api_router.post("/projects/{project_id}/floorplans")
+async def upload_floorplan(
+    project_id: str,
+    file: UploadFile = File(...),
+    name: str = Form(...)
+):
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Projekt nem található")
+    
+    content = await file.read()
+    
+    floorplan_id = str(uuid.uuid4())
+    floorplan_doc = {
+        "id": floorplan_id,
+        "project_id": project_id,
+        "name": name,
+        "filename": file.filename,
+        "content_type": file.content_type or "image/jpeg",
+        "data": base64.b64encode(content).decode('utf-8'),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.floorplans.insert_one(floorplan_doc)
+    
+    return {
+        "id": floorplan_id,
+        "project_id": project_id,
+        "name": name,
+        "filename": file.filename,
+        "content_type": floorplan_doc["content_type"],
+        "created_at": floorplan_doc["created_at"],
+        "marker_count": 0
+    }
+
+@api_router.get("/projects/{project_id}/floorplans")
+async def get_floorplans(project_id: str):
+    floorplans = await db.floorplans.find(
+        {"project_id": project_id},
+        {"_id": 0, "data": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    for fp in floorplans:
+        marker_count = await db.images.count_documents({"floorplan_id": fp["id"]})
+        fp["marker_count"] = marker_count
+    
+    return floorplans
+
+@api_router.get("/floorplans/{floorplan_id}/data")
+async def get_floorplan_data(floorplan_id: str):
+    floorplan = await db.floorplans.find_one({"id": floorplan_id})
+    if not floorplan:
+        raise HTTPException(status_code=404, detail="Tervrajz nem található")
+    
+    data = base64.b64decode(floorplan["data"])
+    return Response(content=data, media_type=floorplan.get("content_type", "image/jpeg"))
+
+@api_router.get("/floorplans/{floorplan_id}/images")
+async def get_floorplan_images(floorplan_id: str):
+    """Get all images marked on a specific floorplan"""
+    images = await db.images.find(
+        {"floorplan_id": floorplan_id},
+        {"_id": 0, "data": 0}
+    ).to_list(1000)
+    
+    for img in images:
+        if "tags" not in img:
+            img["tags"] = []
+    
+    return images
+
+@api_router.delete("/floorplans/{floorplan_id}")
+async def delete_floorplan(floorplan_id: str):
+    floorplan = await db.floorplans.find_one({"id": floorplan_id})
+    if not floorplan:
+        raise HTTPException(status_code=404, detail="Tervrajz nem található")
+    
+    # Remove floorplan references from images
+    await db.images.update_many(
+        {"floorplan_id": floorplan_id},
+        {"$set": {"floorplan_id": None, "floorplan_x": None, "floorplan_y": None}}
+    )
+    
+    await db.floorplans.delete_one({"id": floorplan_id})
+    
+    return {"message": "Tervrajz törölve"}
 
 # --- Image Endpoints ---
 
@@ -178,7 +316,10 @@ async def upload_image(
     tags: str = Form(""),  # Comma-separated tags
     lat: Optional[float] = Form(None),
     lng: Optional[float] = Form(None),
-    address: str = Form("")
+    address: str = Form(""),
+    floorplan_id: Optional[str] = Form(None),
+    floorplan_x: Optional[float] = Form(None),
+    floorplan_y: Optional[float] = Form(None)
 ):
     project = await db.projects.find_one({"id": project_id})
     if not project:
@@ -186,6 +327,12 @@ async def upload_image(
     
     if category not in ["alapszereles", "szerelvenyezes", "atadas"]:
         raise HTTPException(status_code=400, detail="Érvénytelen kategória")
+    
+    # Verify floorplan exists if provided
+    if floorplan_id:
+        floorplan = await db.floorplans.find_one({"id": floorplan_id})
+        if not floorplan:
+            raise HTTPException(status_code=404, detail="Tervrajz nem található")
     
     # Read file content
     content = await file.read()
@@ -210,6 +357,9 @@ async def upload_image(
         "tags": tag_list,
         "location": location,
         "linked_image_id": None,
+        "floorplan_id": floorplan_id,
+        "floorplan_x": floorplan_x,
+        "floorplan_y": floorplan_y,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -231,6 +381,9 @@ async def upload_image(
         "tags": tag_list,
         "location": location,
         "linked_image_id": None,
+        "floorplan_id": floorplan_id,
+        "floorplan_x": floorplan_x,
+        "floorplan_y": floorplan_y,
         "created_at": image_doc["created_at"]
     }
 
@@ -267,6 +420,12 @@ async def get_project_images(
             img["location"] = None
         if "linked_image_id" not in img:
             img["linked_image_id"] = None
+        if "floorplan_id" not in img:
+            img["floorplan_id"] = None
+        if "floorplan_x" not in img:
+            img["floorplan_x"] = None
+        if "floorplan_y" not in img:
+            img["floorplan_y"] = None
     
     return images
 
@@ -299,6 +458,19 @@ async def update_image(image_id: str, update: ImageUpdate):
             if not linked:
                 raise HTTPException(status_code=404, detail="Kapcsolt kép nem található")
         update_data["linked_image_id"] = update.linked_image_id if update.linked_image_id else None
+    
+    # Floorplan position update
+    if update.floorplan_id is not None:
+        if update.floorplan_id != "":
+            floorplan = await db.floorplans.find_one({"id": update.floorplan_id})
+            if not floorplan:
+                raise HTTPException(status_code=404, detail="Tervrajz nem található")
+        update_data["floorplan_id"] = update.floorplan_id if update.floorplan_id else None
+    
+    if update.floorplan_x is not None:
+        update_data["floorplan_x"] = update.floorplan_x
+    if update.floorplan_y is not None:
+        update_data["floorplan_y"] = update.floorplan_y
     
     if update_data:
         await db.images.update_one({"id": image_id}, {"$set": update_data})
