@@ -183,12 +183,14 @@ class BauDokAPITester:
             return response['id']
         return None
 
-    def test_get_project_images(self, project_id, category=None, date_from=None, date_to=None):
-        """Test getting project images with filters"""
+    def test_get_project_images(self, project_id, category=None, tag=None, date_from=None, date_to=None):
+        """Test getting project images with filters including tag filter"""
         endpoint = f"projects/{project_id}/images"
         params = []
         if category:
             params.append(f"category={category}")
+        if tag:
+            params.append(f"tag={tag}")
         if date_from:
             params.append(f"date_from={date_from}")
         if date_to:
@@ -197,7 +199,7 @@ class BauDokAPITester:
         if params:
             endpoint += "?" + "&".join(params)
         
-        filter_info = f" (category: {category}, date_from: {date_from}, date_to: {date_to})" if any([category, date_from, date_to]) else ""
+        filter_info = f" (category: {category}, tag: {tag}, date_from: {date_from}, date_to: {date_to})" if any([category, tag, date_from, date_to]) else ""
         success, response = self.run_test(
             f"Get Project Images{filter_info}",
             "GET",
