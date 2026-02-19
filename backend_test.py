@@ -525,6 +525,8 @@ class BauDokAPITester:
         # Test getting non-existent resources (should return 404)
         self.run_test("Get Non-existent Project", "GET", f"projects/non-existent", 404)
         self.run_test("Get Non-existent Image", "GET", f"images/non-existent/data", 404)
+        self.run_test("Get Non-existent Floorplan", "GET", f"floorplans/non-existent/data", 404)
+        self.run_test("Get Images for Non-existent Floorplan", "GET", f"floorplans/non-existent/images", 404)
 
         return True
 
