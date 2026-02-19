@@ -478,7 +478,7 @@ const ProjectDetail = ({ project, onBack }) => {
     if (!projectData?.images) return [];
     let filtered = projectData.images.filter(img => img.category === activeTab);
     if (dateFilter) { const filterDate = dateFilter.toISOString().split("T")[0]; filtered = filtered.filter(img => img.created_at.startsWith(filterDate)); }
-    if (tagFilter) { filtered = filtered.filter(img => img.tags?.includes(tagFilter)); }
+    if (tagFilter && tagFilter !== "all") { filtered = filtered.filter(img => img.tags?.includes(tagFilter)); }
     return filtered;
   };
 
