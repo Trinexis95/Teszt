@@ -26,6 +26,13 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# --- Predefined Tags ---
+PREDEFINED_TAGS = [
+    "villanyszerelés", "csövezés", "burkolás", "festés", 
+    "szigetelés", "gipszkarton", "hiba", "javítás",
+    "ablak", "ajtó", "fűtés", "klíma", "szaniter"
+]
+
 # --- Models ---
 
 class ImageModel(BaseModel):
@@ -35,6 +42,9 @@ class ImageModel(BaseModel):
     description: str = ""
     filename: str = ""
     content_type: str = "image/jpeg"
+    tags: List[str] = []
+    location: Optional[dict] = None  # {lat: float, lng: float, address: str}
+    linked_image_id: Optional[str] = None  # For before/after comparison
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class ProjectModel(BaseModel):
@@ -55,7 +65,10 @@ class ProjectUpdate(BaseModel):
     description: Optional[str] = None
 
 class ImageUpdate(BaseModel):
-    description: str
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    location: Optional[dict] = None
+    linked_image_id: Optional[str] = None
 
 class ImageResponse(BaseModel):
     id: str
@@ -63,6 +76,9 @@ class ImageResponse(BaseModel):
     description: str
     filename: str
     content_type: str
+    tags: List[str] = []
+    location: Optional[dict] = None
+    linked_image_id: Optional[str] = None
     created_at: str
 
 class ProjectWithImages(BaseModel):
@@ -79,6 +95,11 @@ class ProjectWithImages(BaseModel):
 @api_router.get("/")
 async def root():
     return {"message": "BauDok API"}
+
+@api_router.get("/tags")
+async def get_tags():
+    """Get predefined tags list"""
+    return {"tags": PREDEFINED_TAGS}
 
 @api_router.post("/projects", response_model=ProjectModel)
 async def create_project(project: ProjectCreate):
@@ -109,6 +130,15 @@ async def get_project(project_id: str):
         {"project_id": project_id},
         {"_id": 0, "data": 0}
     ).sort("created_at", -1).to_list(1000)
+    
+    # Ensure all images have the new fields
+    for img in images:
+        if "tags" not in img:
+            img["tags"] = []
+        if "location" not in img:
+            img["location"] = None
+        if "linked_image_id" not in img:
+            img["linked_image_id"] = None
     
     return {**project, "images": images}
 
@@ -144,7 +174,11 @@ async def upload_image(
     project_id: str,
     file: UploadFile = File(...),
     category: str = Form(...),
-    description: str = Form("")
+    description: str = Form(""),
+    tags: str = Form(""),  # Comma-separated tags
+    lat: Optional[float] = Form(None),
+    lng: Optional[float] = Form(None),
+    address: str = Form("")
 ):
     project = await db.projects.find_one({"id": project_id})
     if not project:
@@ -156,6 +190,14 @@ async def upload_image(
     # Read file content
     content = await file.read()
     
+    # Parse tags
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+    
+    # Build location object
+    location = None
+    if lat is not None and lng is not None:
+        location = {"lat": lat, "lng": lng, "address": address}
+    
     image_id = str(uuid.uuid4())
     image_doc = {
         "id": image_id,
@@ -165,6 +207,9 @@ async def upload_image(
         "filename": file.filename,
         "content_type": file.content_type or "image/jpeg",
         "data": base64.b64encode(content).decode('utf-8'),
+        "tags": tag_list,
+        "location": location,
+        "linked_image_id": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -183,6 +228,9 @@ async def upload_image(
         "description": description,
         "filename": file.filename,
         "content_type": image_doc["content_type"],
+        "tags": tag_list,
+        "location": location,
+        "linked_image_id": None,
         "created_at": image_doc["created_at"]
     }
 
@@ -190,6 +238,7 @@ async def upload_image(
 async def get_project_images(
     project_id: str,
     category: Optional[str] = None,
+    tag: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None
 ):
@@ -197,6 +246,9 @@ async def get_project_images(
     
     if category:
         query["category"] = category
+    
+    if tag:
+        query["tags"] = tag
     
     if date_from or date_to:
         query["created_at"] = {}
@@ -206,6 +258,16 @@ async def get_project_images(
             query["created_at"]["$lte"] = date_to + "T23:59:59"
     
     images = await db.images.find(query, {"_id": 0, "data": 0}).sort("created_at", -1).to_list(1000)
+    
+    # Ensure all images have the new fields
+    for img in images:
+        if "tags" not in img:
+            img["tags"] = []
+        if "location" not in img:
+            img["location"] = None
+        if "linked_image_id" not in img:
+            img["linked_image_id"] = None
+    
     return images
 
 @api_router.get("/images/{image_id}/data")
@@ -223,12 +285,25 @@ async def update_image(image_id: str, update: ImageUpdate):
     if not image:
         raise HTTPException(status_code=404, detail="Kép nem található")
     
-    await db.images.update_one(
-        {"id": image_id},
-        {"$set": {"description": update.description}}
-    )
+    update_data = {}
+    if update.description is not None:
+        update_data["description"] = update.description
+    if update.tags is not None:
+        update_data["tags"] = update.tags
+    if update.location is not None:
+        update_data["location"] = update.location
+    if update.linked_image_id is not None:
+        # Verify the linked image exists
+        if update.linked_image_id != "":
+            linked = await db.images.find_one({"id": update.linked_image_id})
+            if not linked:
+                raise HTTPException(status_code=404, detail="Kapcsolt kép nem található")
+        update_data["linked_image_id"] = update.linked_image_id if update.linked_image_id else None
     
-    return {"message": "Leírás frissítve"}
+    if update_data:
+        await db.images.update_one({"id": image_id}, {"$set": update_data})
+    
+    return {"message": "Kép frissítve"}
 
 @api_router.delete("/images/{image_id}")
 async def delete_image(image_id: str):
@@ -237,6 +312,13 @@ async def delete_image(image_id: str):
         raise HTTPException(status_code=404, detail="Kép nem található")
     
     project_id = image["project_id"]
+    
+    # Remove any links to this image
+    await db.images.update_many(
+        {"linked_image_id": image_id},
+        {"$set": {"linked_image_id": None}}
+    )
+    
     await db.images.delete_one({"id": image_id})
     
     # Update project image count
