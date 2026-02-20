@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:7
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=baudok
+      - CORS_ORIGINS=*
+    depends_on:
+      - mongodb
+
+volumes:
+  mongo_data:
